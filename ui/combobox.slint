@@ -65,10 +65,10 @@ export component EditableComboBox inherits Rectangle {
                     if (self.active_index < 0) {
                         return;
                     }
-                    if (self.active_index * root.item-height < -self.viewport-y) {
-                        self.viewport-y = -self.active_index * root.item-height;
-                    } else if ((self.active_index + 1) * root.item-height > -self.viewport-y + self.height) {
-                        self.viewport-y = -((self.active_index + 1) * root.item-height - self.height);
+                    if (self.active_index * root.item-height < -self.content-y) {
+                        self.content-y = -self.active_index * root.item-height;
+                    } else if ((self.active_index + 1) * root.item-height > -self.content-y + self.height) {
+                        self.content-y = -((self.active_index + 1) * root.item-height - self.height);
                     }
                 }
 
