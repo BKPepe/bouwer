@@ -6,7 +6,7 @@ description = "OpenWrt firmware builder GUI"
 license = "GPL-3.0-only"
 readme = "README.md"
 edition = "2024"
-rust-version = "1.96"
+rust-version = "1.100"
 
 [dependencies]
 anyhow = "1.0"
