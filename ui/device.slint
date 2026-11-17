@@ -94,7 +94,8 @@ export component DeviceDialog inherits Rectangle {
             transform-scale-x: 0.95 + (open-progress * 0.05);
             transform-scale-y: self.transform-scale-x;
 
-            background: Palette.background;
+            backdrop-blur: 6px;
+            background: Palette.background.transparentize(0.75);
             border-width: 1px;
             border-color: Palette.border;
             border-radius: 8px;
