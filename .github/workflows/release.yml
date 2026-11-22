@@ -32,6 +32,11 @@ jobs:
             -C artifacts/bouwer-ubuntu-latest bouwer \
             -C ${{ github.workspace }} LICENSE
 
+          cp artifacts/bouwer-macos-latest-aarch64/*.dmg \
+            dist/bouwer-${{ github.ref_name }}-macos-aarch64.dmg
+          cp artifacts/bouwer-macos-latest-x86_64/*.dmg \
+            dist/bouwer-${{ github.ref_name }}-macos-x86_64.dmg
+
           zip -j dist/bouwer-${{ github.ref_name }}-windows-x86_64.zip \
             artifacts/bouwer-windows-latest/bouwer.exe \
             LICENSE
@@ -40,6 +45,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
+            dist/*.dmg
             dist/*.tar.gz
             dist/*.zip
           generate_release_notes: true
