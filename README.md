@@ -39,21 +39,38 @@ A working internet connection.
 A working installation of [Podman](https://podman.io/docs/installation) or
 [Docker](https://www.docker.com/products/docker-desktop/). Bouwer uses these
 container engines to run OpenWrt image builder containers. On Linux use your
-package manager, on Windows - the official websites to install either of them.
+package manager, on macOS - e.g. Homebrew (`brew install podman`), on Windows -
+the official websites to install either of them.
 Additionally, on Linux, Docker must be accessible _without_ super user
 privileges, by e.g. adding your user to the `docker` group.
 
-1 to 3 gigabytes of free disk space for each target and free disk space for the
-firmware images. On Windows, image builder images are stored as part of Podman
-or Docker VMs, so you need to account for that when allocating space for them.
+On macOS, a running Podman machine and Docker Desktop are detected
+automatically. For any other setup, point `DOCKER_HOST` at the right socket
+when starting Bouwer, e.g.
+`open --env DOCKER_HOST=unix:///path/to/socket -a Bouwer`. Podman 6 no longer
+supports Intel Macs, so use Podman 5.8 there.
 
-Currently, modern Linux and Windows running on x86/64 are supported. macOS on
-aarch64 is doable, but there's no practical way for me to test this at the
-moment, although the basic macOS-specific hooks are there.
+1 to 3 gigabytes of free disk space for each target and free disk space for the
+firmware images. On Windows and macOS, image builder images are stored as part
+of Podman or Docker VMs, so you need to account for that when allocating space
+for them.
+
+Currently, modern Linux and Windows running on x86/64, and macOS running on
+Apple silicon (aarch64) are supported. Builds for Intel Macs (x86/64) are
+provided as well, but have seen less testing.
 
 ## Installation
 
 Download prebuilt binaries from the [release page](https://github.com/GeorgeSapkin/bouwer/releases).
+
+On macOS, open the disk image and drag Bouwer to the Applications folder. The
+app is not notarized, so macOS blocks it on the first launch. Allow it in
+_System Settings_ > _Privacy & Security_ > _Open Anyway_, or remove the
+quarantine attribute:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Bouwer.app
+```
 
 ## Usage
 
@@ -110,6 +127,14 @@ installed along with OS-specific
    ```
 
 The executable will be located in `target/release/`.
+
+On macOS, [cargo-packager](https://github.com/crabnebula-dev/cargo-packager)
+can then bundle it into `target/release/Bouwer.app`:
+
+```bash
+cargo install cargo-packager --locked
+cargo packager --release --formats app
+```
 
 ## Issues
 
