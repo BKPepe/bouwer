@@ -5,3 +5,8 @@ rustflags = ["-C", "link-arg=-s"]
 
 [registry]
 global-min-publish-age = "3 days"
+
+# Build everything, C dependencies included, for the minimum macOS version
+# declared in Cargo.toml
+[env]
+MACOSX_DEPLOYMENT_TARGET = "11.0"
