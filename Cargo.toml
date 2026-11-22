@@ -30,13 +30,17 @@ tokio = { version = "1", features = [
 ] }
 ureq = { version = "3", features = ["json"] }
 
-# Native Linux or Windows
-[target.'cfg(any(target_os = "linux", target_env = "msvc"))'.dependencies]
+# Native Linux, macOS, or Windows
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_env = "msvc"))'.dependencies]
 slint = { version = "1.17", default-features = false, features = ["backend-winit", "compat-1-2", "renderer-skia"] }
 
 # Cross-compile Windows from Linux
 [target.'cfg(all(target_os = "windows", target_env = "gnu"))'.dependencies]
 slint = { version = "1.17", default-features = false, features = ["backend-winit", "compat-1-2", "renderer-software"] }
+
+# macOS doesn't ship OpenSSL, so link it statically
+[target.'cfg(target_os = "macos")'.dependencies]
+ssh2 = { version = "0.9", features = ["vendored-openssl"] }
 
 [build-dependencies]
 slint-build = "1.17"
@@ -54,3 +58,15 @@ ProductName = "Bouwer"
 FileDescription = "Bouwer - OpenWrt firmware builder"
 LegalCopyright = "Copyright © 2026 George Sapkin"
 OriginalFilename = "bouwer.exe"
+
+[package.metadata.packager]
+product-name = "Bouwer"
+identifier = "in.sapk.bouwer"
+copyright = "Copyright © 2026 George Sapkin"
+icons = ["assets/logo.icns"]
+resources = ["LICENSE"]
+
+[package.metadata.packager.macos]
+minimum-system-version = "11.0"
+# Ad-hoc signature
+signing-identity = "-"

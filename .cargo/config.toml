@@ -2,3 +2,8 @@
 # refuses to recognize the binary
 [target.'cfg(all(target_os = "windows", target_env = "gnu"))']
 rustflags = ["-C", "link-arg=-s"]
+
+# Build everything, C dependencies included, for the minimum macOS version
+# declared in Cargo.toml
+[env]
+MACOSX_DEPLOYMENT_TARGET = "11.0"

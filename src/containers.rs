@@ -93,6 +93,53 @@ impl<S> LogStreamExt for ContainerGuard<S> where
 {
 }
 
+#[cfg(target_os = "macos")]
+const API_SOCK_SUFFIX: &[u8] = b"-api.sock";
+#[cfg(target_os = "macos")]
+const DEFAULT_API_SOCK: &str = "podman-machine-default-api.sock";
+
+/// Finds the API socket of a running Podman machine in `dir`. The socket is
+/// named after the machine, so the default machine is tried first and then any
+/// other one.
+#[cfg(target_os = "macos")]
+fn find_podman_machine_socket(dir: &Path) -> std::io::Result<Option<PathBuf>> {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        // No Podman machine has run yet
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(e),
+    };
+
+    let mut sockets: Vec<PathBuf> = entries
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(is_api_sock)
+        .collect();
+
+    sockets.sort_by_cached_key(|path| (!is_default(path), path.clone()));
+
+    Ok(sockets.into_iter().find(is_listening))
+}
+
+#[cfg(target_os = "macos")]
+fn is_api_sock(path: &impl AsRef<Path>) -> bool {
+    path.as_ref()
+        .file_name()
+        .is_some_and(|name| name.as_encoded_bytes().ends_with(API_SOCK_SUFFIX))
+}
+
+#[cfg(target_os = "macos")]
+fn is_default(path: &Path) -> bool {
+    path.file_name()
+        .is_some_and(|name| name == DEFAULT_API_SOCK)
+}
+
+/// Checks if anything accepts connections on a Unix socket
+#[cfg(target_os = "macos")]
+fn is_listening(socket: &impl AsRef<Path>) -> bool {
+    std::os::unix::net::UnixStream::connect(socket).is_ok()
+}
+
 impl Containers {
     pub fn new() -> anyhow::Result<Self> {
         let docker = if let Ok(host) =
@@ -101,6 +148,23 @@ impl Containers {
             Docker::connect_with_host(&host)?
         } else {
             cfg_select! {
+                target_os = "macos" => {
+                    // Check for a running Podman machine, then for Docker
+                    // Desktop, which links its socket to the default location
+                    // only on request
+                    let socket = find_podman_machine_socket(&env::temp_dir().join("podman"))?.or_else(|| {
+                        env::var_os("HOME")
+                            .map(|home| Path::new(&home).join(".docker/run/docker.sock"))
+                            .filter(is_listening)
+                    });
+
+                    if let Some(socket) = socket {
+                        Docker::connect_with_socket(&socket.to_string_lossy(), 120, bollard::API_DEFAULT_VERSION)?
+                    } else {
+                        // Fallback to defaults
+                        Docker::connect_with_local_defaults()?
+                    }
+                }
                 unix => {
                     // Check for rootless Podman socket
                     let socket = env::var("XDG_RUNTIME_DIR").map_or_else(
@@ -282,5 +346,64 @@ impl Containers {
                 }),
             )
             .await;
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+    use std::os::unix::net::UnixListener;
+
+    /// Creates an empty directory for test sockets. Socket paths are limited
+    /// to about 100 bytes, so the name has to stay short.
+    fn socket_dir(name: &str) -> PathBuf {
+        let dir = env::temp_dir().join(format!("bw-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn test_find_podman_machine_socket_missing_dir() {
+        assert_eq!(
+            find_podman_machine_socket(Path::new("/nonexistent")).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn test_find_podman_machine_socket_not_running() {
+        let dir = socket_dir("s");
+        // A dropped listener leaves its socket file behind
+        drop(UnixListener::bind(dir.join("podman-machine-default-api.sock")).unwrap());
+
+        assert_eq!(find_podman_machine_socket(&dir).unwrap(), None);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_find_podman_machine_socket_custom_name() {
+        let dir = socket_dir("c");
+        let socket = dir.join("custom-api.sock");
+        let _api = UnixListener::bind(&socket).unwrap();
+        // The ready socket of the same machine is not an API socket
+        let _ready = UnixListener::bind(dir.join("custom.sock")).unwrap();
+
+        assert_eq!(find_podman_machine_socket(&dir).unwrap(), Some(socket));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_find_podman_machine_socket_prefers_default() {
+        let dir = socket_dir("d");
+        let socket = dir.join("podman-machine-default-api.sock");
+        let _other = UnixListener::bind(dir.join("a-api.sock")).unwrap();
+        let _default = UnixListener::bind(&socket).unwrap();
+
+        assert_eq!(find_podman_machine_socket(&dir).unwrap(), Some(socket));
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
