@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         if: matrix.os == 'windows-latest'
-        run: choco install upx
+        run: choco upgrade llvm upx
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
