@@ -39,9 +39,14 @@ assets/src/logo_%.png: assets/logo_no_shadow.svg
 	rsvg-convert $< --width $* --height $* --output $@
 
 # Sizes based on:
+# https://developer.apple.com/design/human-interface-guidelines/icons
+assets/logo.icns: $(foreach s,16 32 128 256 512 1024,assets/src/logo_$(s).png)
+	png2icns $@ $?
+
+# Sizes based on:
 # https://learn.microsoft.com/en-us/windows/apps/design/iconography/app-icon-construction
 assets/logo.ico: assets/src/logo_256.png
 	magick $< -define icon:auto-resize=16,24,32,48,256 $@
 
 PHONY: icons
-icons: assets/logo.ico
+icons: assets/logo.icns assets/logo.ico
